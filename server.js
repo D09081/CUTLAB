@@ -184,26 +184,35 @@ app.get("/api/jobs/:id",(req,res)=>{
 });
 app.post("/api/clips",async(req,res)=>{
   try {
-    const {id,clips,aspect="9:16",burnSubtitles=false}=req.body||{}, {job,input}=getJob(id);
+    const {id,clips,aspect="9:16",burnSubtitles=false,cropMode="fit",editorName="",makeVariants=false}=req.body||{}, {job,input}=getJob(id);
     if(!Array.isArray(clips)||!clips.length||clips.length>30) throw new Error("Добавьте от 1 до 30 фрагментов");
     if(!["9:16","1:1","16:9"].includes(aspect)) throw new Error("Неизвестный формат кадра");
     const results=[];
     for(let i=0;i<clips.length;i++){
       const start=Math.max(0,Number(clips[i].start)),end=Number(clips[i].end);
       if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start||end-start>600) throw new Error("Проверьте границы фрагмента №"+(i+1));
-      const outName=`${id}-${Date.now()}-${i+1}.mp4`,out=path.join(EXPORTS,outName),dims=aspect==="9:16"?[1080,1920]:aspect==="1:1"?[1080,1080]:[1920,1080];
-      const vf=`scale=${dims[0]}:${dims[1]}:force_original_aspect_ratio=decrease,pad=${dims[0]}:${dims[1]}:(ow-iw)/2:(oh-ih)/2`;
-      let burned=false,base=["-y","-ss",String(start),"-i",input,"-t",String(end-start)];
-      if(burnSubtitles&&job.captions?.segments?.length){
-        const srt=makeSrt(job.captions.segments,start,end),srtName=outName+".srt";
-        fs.writeFileSync(path.join(CAPTIONS,srtName),srt);
-        const srtPath=path.join(CAPTIONS,srtName).replace(/\\/g,"/").replace(/:/g,"\\:");
-        try { await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
-        catch { await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); }
-      } else await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
-      const subtitleUrl=job.captions?"/captions/"+outName+".srt":null;
-      if(job.captions&&!fs.existsSync(path.join(CAPTIONS,outName+".srt"))) fs.writeFileSync(path.join(CAPTIONS,outName+".srt"),makeSrt(job.captions.segments,start,end));
-      results.push({name:outName,url:"/exports/"+outName,start,end,subtitleUrl,burned});
+      const dims=aspect==="9:16"?[1080,1920]:aspect==="1:1"?[1080,1080]:[1920,1080];
+      const fitFilter=`scale=${dims[0]}:${dims[1]}:force_original_aspect_ratio=decrease,pad=${dims[0]}:${dims[1]}:(ow-iw)/2:(oh-ih)/2`;
+      const fillFilter=`scale=${dims[0]}:${dims[1]}:force_original_aspect_ratio=increase,crop=${dims[0]}:${dims[1]}`;
+      const modes=makeVariants?["fit","fill"]:[cropMode];
+      for(let v=0;v<modes.length;v++){
+        const mode=modes[v],vf=mode==="fill"?fillFilter:fitFilter;
+        const suffix=makeVariants?(mode==="fit"?"-A-fit":"-B-fill"):(mode==="fill"?"-fill":"");
+        const editorPrefix=safeEditor?safeEditor+"-":"";
+        const outName=`${editorPrefix}${id}-${Date.now()}-${i+1}${suffix}.mp4`,out=path.join(EXPORTS,outName);
+        const base=["-y","-ss",String(start),"-i",input,"-t",String(end-start)];
+        let burned=false;
+        if(burnSubtitles&&job.captions?.segments?.length){
+          const srt=makeSrt(job.captions.segments,start,end),srtName=outName+".srt";
+          fs.writeFileSync(path.join(CAPTIONS,srtName),srt);
+          const srtPath=path.join(CAPTIONS,srtName).replace(/\\\\/g,"/").replace(/:/g,"\\\\:");
+          try { await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
+          catch { await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); }
+        } else await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
+        const subtitleUrl=job.captions?"/captions/"+outName+".srt":null;
+        if(job.captions&&!fs.existsSync(path.join(CAPTIONS,outName+".srt"))) fs.writeFileSync(path.join(CAPTIONS,outName+".srt"),makeSrt(job.captions.segments,start,end));
+        results.push({name:outName,url:"/exports/"+outName,start,end,subtitleUrl,burned,cropMode:mode,editor:safeEditor||null});
+      }
     }
     job.clips.push(...results);addHistory({type:"export",id,name:job.original,createdAt:Date.now(),status:"Готово",aspect,exports:results});
     res.json({ok:true,exports:results});
