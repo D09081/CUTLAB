@@ -33,7 +33,7 @@ $("setStart").onclick=()=>{$("start").value=preview.currentTime.toFixed(1)};
 $("setEnd").onclick=()=>{$("end").value=preview.currentTime.toFixed(1)};
 $("analyze").onclick=async()=>{
  if(!project)return;say("Анализирую смены сцен. Подожди…");$("analyze").disabled=true;
- try{const r=await fetch("/api/analyze/"+project.id,{method:"POST"}),j=await r.json();if(!r.ok)throw Error(j.error);suggestions=j.suggestions||[];renderSuggestions();say("Анализ готов: найдено "+suggestions.length+" предложений. Выбери подходящие моменты.");}
+ try{const r=await fetch("/api/analyze/"+project.id,{method:"POST"}),j=await r.json();if(!r.ok)throw Error(j.error);suggestions=j.suggestions||[];renderSuggestions();say("Анализ готов: "+suggestions.length+" предложений. "+(j.warning||"Выбери подходящие моменты."));}
  catch(e){say("Не удалось проанализировать: "+e.message)}finally{$("analyze").disabled=false}
 };
 function renderSuggestions(){
@@ -77,9 +77,9 @@ function render(){
 }
 $("export").onclick=async()=>{
  if(!project||!clips.length)return say("Сначала добавь фрагменты.");
- $("export").disabled=true;say("Собираю MP4. Не закрывай страницу…");
+ $("export").disabled=true;say("Собираю "+clips.length+($("makeVariants").checked?" × 2 версии":"")+" роликов. Не закрывай страницу…");
  try{
-  const r=await fetch("/api/clips",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:project.id,clips,aspect:$("aspect").value,burnSubtitles:$("burnSubtitles").checked})}),j=await r.json();if(!r.ok)throw Error(j.error);
+  const r=await fetch("/api/clips",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:project.id,clips,aspect:$("aspect").value,burnSubtitles:$("burnSubtitles").checked,editorName:$("editorName").value,makeVariants:$("makeVariants").checked})}),j=await r.json();if(!r.ok)throw Error(j.error);
   const box=$("message");box.innerHTML="<b>Готово! Забирай ролики:</b>";
   j.exports.forEach(x=>{
    const row=document.createElement("div");row.className="download-row";
