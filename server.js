@@ -187,10 +187,14 @@ app.post("/api/clips",async(req,res)=>{
     const {id,clips,aspect="9:16",burnSubtitles=false,cropMode="fit",editorName="",makeVariants=false}=req.body||{}, {job,input}=getJob(id);
     if(!Array.isArray(clips)||!clips.length||clips.length>30) throw new Error("Добавьте от 1 до 30 фрагментов");
     if(!["9:16","1:1","16:9"].includes(aspect)) throw new Error("Неизвестный формат кадра");
+    if(!["fit","fill"].includes(cropMode)) throw new Error("Неизвестный режим кадрирования");
+    const safeEditor=String(editorName||"").replace(/[^\\p{L}\\p{N}_-]/gu,"").slice(0,20);
+    const duration=job.duration||await mediaDuration(input);
+    job.duration=duration;
     const results=[];
     for(let i=0;i<clips.length;i++){
       const start=Math.max(0,Number(clips[i].start)),end=Number(clips[i].end);
-      if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start||end-start>600) throw new Error("Проверьте границы фрагмента №"+(i+1));
+      if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start||end-start>600||start>=duration||end>duration+0.05) throw new Error("Проверьте границы фрагмента №"+(i+1)+": видео длится "+duration.toFixed(1)+" сек.");
       const dims=aspect==="9:16"?[1080,1920]:aspect==="1:1"?[1080,1080]:[1920,1080];
       const fitFilter=`scale=${dims[0]}:${dims[1]}:force_original_aspect_ratio=decrease,pad=${dims[0]}:${dims[1]}:(ow-iw)/2:(oh-ih)/2`;
       const fillFilter=`scale=${dims[0]}:${dims[1]}:force_original_aspect_ratio=increase,crop=${dims[0]}:${dims[1]}`;
