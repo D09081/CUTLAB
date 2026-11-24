@@ -53,7 +53,7 @@ function runFFmpeg(args) {
   return new Promise((resolve, reject) => {
     const p = spawn(ffmpeg, args); let err = "";
     p.stderr.on("data", d => err += d.toString()); p.on("error", reject);
-    p.on("close", code => code === 0 ? resolve(err) : reject(new Error(err.slice(-1800) || \`FFmpeg exit \${code}\`)));
+    p.on("close", code => code === 0 ? resolve(err) : reject(new Error(err.slice(-1800) || `FFmpeg exit ${code}`)));
   });
 }
 async function mediaDuration(file) {
@@ -70,7 +70,7 @@ function srtTime(seconds) {
 function makeSrt(segments, offset = 0, limit = Infinity) {
   return segments.filter(x => Number(x.end) > offset && Number(x.start) < limit).map((x,i) => {
     const start = Math.max(0, Number(x.start) - offset), end = Math.max(start + .15, Math.min(Number(x.end), limit) - offset);
-    return \`\${i+1}\\n\${srtTime(start)} --> \${srtTime(end)}\\n\${String(x.text || "").trim()}\\n\`;
+    return `${i+1}\\n${srtTime(start)} --> ${srtTime(end)}\\n${String(x.text || "").trim()}\\n`;
   }).join("\\n");
 }
 function parseSrt(srt) {
@@ -179,14 +179,14 @@ app.post("/api/clips",async(req,res)=>{
     for(let i=0;i<clips.length;i++){
       const start=Math.max(0,Number(clips[i].start)),end=Number(clips[i].end);
       if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start||end-start>600) throw new Error("Проверьте границы фрагмента №"+(i+1));
-      const outName=\`\${id}-\${Date.now()}-\${i+1}.mp4\`,out=path.join(EXPORTS,outName),dims=aspect==="9:16"?[1080,1920]:aspect==="1:1"?[1080,1080]:[1920,1080];
-      const vf=\`scale=\${dims[0]}:\${dims[1]}:force_original_aspect_ratio=decrease,pad=\${dims[0]}:\${dims[1]}:(ow-iw)/2:(oh-ih)/2\`;
+      const outName=`${id}-${Date.now()}-${i+1}.mp4`,out=path.join(EXPORTS,outName),dims=aspect==="9:16"?[1080,1920]:aspect==="1:1"?[1080,1080]:[1920,1080];
+      const vf=`scale=${dims[0]}:${dims[1]}:force_original_aspect_ratio=decrease,pad=${dims[0]}:${dims[1]}:(ow-iw)/2:(oh-ih)/2`;
       let burned=false,base=["-y","-ss",String(start),"-i",input,"-t",String(end-start)];
       if(burnSubtitles&&job.captions?.segments?.length){
         const srt=makeSrt(job.captions.segments,start,end),srtName=outName+".srt";
         fs.writeFileSync(path.join(CAPTIONS,srtName),srt);
         const srtPath=path.join(CAPTIONS,srtName).replace(/\\\\/g,"/").replace(/:/g,"\\\\:");
-        try { await runFFmpeg([...base,"-vf",vf+\`,subtitles='\${srtPath}'\`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
+        try { await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
         catch { await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); }
       } else await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
       const subtitleUrl=job.captions?"/captions/"+outName+".srt":null;
