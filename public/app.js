@@ -82,7 +82,7 @@ $("export").onclick=async()=>{
  if(!project||!clips.length)return say("Сначала добавь фрагменты.");
  $("export").disabled=true;say("Собираю "+clips.length+($("makeVariants").checked?" × 2 версии":"")+" роликов. Не закрывай страницу…");
  try{
-  const r=await fetch("/api/clips",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:project.id,clips,aspect:$("aspect").value,burnSubtitles:$("burnSubtitles").checked,editorName:$("editorName").value,makeVariants:$("makeVariants").checked})}),j=await r.json();if(!r.ok)throw Error(j.error);
+  const r=await fetch("/api/clips",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:project.id,clips,aspect:$("aspect").value,burnSubtitles:$("burnSubtitles").checked,subtitlePreset:$("subtitlePreset").value,subtitleSize:Number($("subtitleSize").value),editorName:$("editorName").value,makeVariants:$("makeVariants").checked})}),j=await r.json();if(!r.ok)throw Error(j.error);
   const box=$("message");box.innerHTML="<b>Готово! Забирай ролики:</b>";
   j.exports.forEach(x=>{
    const row=document.createElement("div");row.className="download-row";
