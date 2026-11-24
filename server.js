@@ -272,7 +272,7 @@ app.post("/api/clips",async(req,res)=>{
           const srt=makeSrt(job.captions.segments,start,end),srtName=outName+".srt";
           fs.writeFileSync(path.join(CAPTIONS,srtName),srt);
           const srtPath=path.join(CAPTIONS,srtName).replace(/\\\\/g,"/").replace(/:/g,"\\\\:");
-          try { const forceStyle=subtitleForceStyle(subtitlePreset,subtitleSize); await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}':force_style='${forceStyle}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
+          try { const forceStyle=subtitleForceStyle(variant.preset,subtitleSize); await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}':force_style='${forceStyle}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
           catch { await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); }
         } else await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
         const subtitleUrl=job.captions?"/captions/"+outName+".srt":null;
