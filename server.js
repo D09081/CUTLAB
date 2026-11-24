@@ -70,16 +70,16 @@ function srtTime(seconds) {
 function makeSrt(segments, offset = 0, limit = Infinity) {
   return segments.filter(x => Number(x.end) > offset && Number(x.start) < limit).map((x,i) => {
     const start = Math.max(0, Number(x.start) - offset), end = Math.max(start + .15, Math.min(Number(x.end), limit) - offset);
-    return `${i+1}\\n${srtTime(start)} --> ${srtTime(end)}\\n${String(x.text || "").trim()}\\n`;
-  }).join("\\n");
+    return `${i+1}\n${srtTime(start)} --> ${srtTime(end)}\n${String(x.text || "").trim()}\n`;
+  }).join("\n");
 }
 function parseSrt(srt) {
-  const blocks = String(srt).replace(/\\r/g,"").trim().split(/\\n\\s*\\n/);
+  const blocks = String(srt).replace(/\r/g,"").trim().split(/\n\s*\n/);
   const segments = [];
   for (const block of blocks) {
-    const lines = block.split("\\n"), ix = lines.findIndex(x => x.includes("-->"));
+    const lines = block.split("\n"), ix = lines.findIndex(x => x.includes("-->"));
     if (ix < 0) continue;
-    const parse = t => { const m=t.trim().match(/(?:(\\d+):)?(\\d{2}):(\\d{2})[,.](\\d{1,3})/); return m ? Number(m[1]||0)*3600+Number(m[2])*60+Number(m[3])+Number(String(m[4]).padEnd(3,"0"))/1000 : NaN; };
+    const parse = t => { const m=t.trim().match(/(?:(\d+):)?(\d{2}):(\d{2})[,.](\d{1,3})/); return m ? Number(m[1]||0)*3600+Number(m[2])*60+Number(m[3])+Number(String(m[4]).padEnd(3,"0"))/1000 : NaN; };
     const [a,b] = lines[ix].split("-->").map(parse), text = lines.slice(ix+1).join(" ").replace(/<[^>]*>/g,"").trim();
     if (Number.isFinite(a) && Number.isFinite(b) && b>a && text) segments.push({start:a,end:b,text});
   }
@@ -107,7 +107,7 @@ app.post("/api/import-url", async (req,res) => {
     if (!youtubedl) throw new Error("Импорт по ссылке временно недоступен на сервере");
     const url=validateSourceUrl(String(req.body?.url||"").trim()), id=crypto.randomUUID();
     await youtubedl(url,{output:path.join(UPLOADS,id+".%(ext)s"),format:"bv*+ba/b",mergeOutputFormat:"mp4",remuxVideo:"mp4",noPlaylist:true,noWarnings:true,noProgress:true,socketTimeout:30,maxFilesize:"500M",restrictFilenames:true});
-    const candidates=fs.readdirSync(UPLOADS).filter(n=>n.startsWith(id+".")&&/\\.(mp4|mov|mkv|webm)$/i.test(n));
+    const candidates=fs.readdirSync(UPLOADS).filter(n=>n.startsWith(id+".")&&/\.(mp4|mov|mkv|webm)$/i.test(n));
     if(!candidates.length) throw new Error("Платформа не вернула доступный видеофайл");
     const filename=candidates[0],full=path.join(UPLOADS,filename),stat=fs.statSync(full),hash=await hashFile(full),source=new URL(url).hostname;
     const job={id,filename,original:"Импорт по ссылке",size:stat.size,hash,clips:[],captions:null,createdAt:Date.now(),source};
@@ -185,7 +185,7 @@ app.post("/api/clips",async(req,res)=>{
       if(burnSubtitles&&job.captions?.segments?.length){
         const srt=makeSrt(job.captions.segments,start,end),srtName=outName+".srt";
         fs.writeFileSync(path.join(CAPTIONS,srtName),srt);
-        const srtPath=path.join(CAPTIONS,srtName).replace(/\\\\/g,"/").replace(/:/g,"\\\\:");
+        const srtPath=path.join(CAPTIONS,srtName).replace(/\\/g,"/").replace(/:/g,"\\:");
         try { await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
         catch { await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); }
       } else await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
