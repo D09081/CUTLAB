@@ -2,11 +2,7 @@ services:
   - type: web
     name: cutlab
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
-    disk:
-      name: cutlab-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 10
