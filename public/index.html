@@ -13,12 +13,14 @@
 <section class="panel upload" id="drop">
 <div class="upload-icon">↑</div><h2>Добавить исходное видео</h2><p>MP4, MOV и другие видеоформаты</p>
 <input id="file" type="file" accept="video/*" hidden>
+<div class="url-import"><div class="eyebrow">IMPORT FROM LINK</div><label for="sourceUrl">Или вставь ссылку на ролик</label><div class="url-row"><input id="sourceUrl" type="url" placeholder="https://youtu.be/..."><button id="importUrl" class="secondary">Импортировать</button></div><small>Публичные ссылки: YouTube, TikTok, Twitch, Vimeo, Instagram, Facebook, X. Только контент, который ты вправе использовать.</small></div>
 <button class="primary" id="choose">Выбрать видео</button><div id="fileInfo" class="muted">Файл обрабатывается на сервере проекта</div>
 </section>
 <section class="workspace panel">
 <div class="section-head"><div><div class="eyebrow">EDITING DESK / 02</div><h2>Нарезка фрагментов</h2></div><span class="tag" id="projectTag">НЕТ ПРОЕКТА</span></div>
 <video id="preview" controls playsinline></video>
 <div class="controls"><label>Начало, сек<input id="start" type="number" min="0" step="0.1" value="0"></label><label>Конец, сек<input id="end" type="number" min="0" step="0.1" value="30"></label></div>
+<div class="row seek-row"><button id="setStart" class="secondary" disabled>Начало = позиция плеера</button><button id="setEnd" class="secondary" disabled>Конец = позиция плеера</button></div>
 <div class="row"><label class="grow">Формат экспорта<select id="aspect"><option value="9:16">9:16 · Shorts / Reels</option><option value="1:1">1:1 · квадрат</option><option value="16:9">16:9 · горизонтальный</option></select></label><button id="add" class="secondary" disabled>+ Добавить фрагмент</button></div>
 <div id="clips" class="clips"><div class="empty">Пока нет фрагментов. Добавь первый отрезок.</div></div>
 <button id="export" class="primary wide" disabled>СОБРАТЬ MP4</button><div id="message" class="message" role="status"></div>
