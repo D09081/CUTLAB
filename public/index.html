@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090b12"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/style.css">
+<title>CUTLAB — Video Studio</title>
+</head>
+<body>
+<header><div class="brand"><span class="mark">C</span><div><b>CUTLAB</b><small>VIDEO STUDIO</small></div></div><span class="status"><i></i> LOCAL WORKSPACE</span></header>
+<main>
+<section class="hero"><div class="eyebrow">CREATOR WORKFLOW / 01</div><h1>Твой контент.<br><em>Твои лучшие моменты.</em></h1><p>Загрузи запись, отметь сильные фрагменты и собери вертикальные ролики.</p></section>
+<section class="panel upload" id="drop">
+<div class="upload-icon">↑</div><h2>Добавить исходное видео</h2><p>MP4, MOV и другие видеоформаты</p>
+<input id="file" type="file" accept="video/*" hidden>
+<button class="primary" id="choose">Выбрать видео</button><div id="fileInfo" class="muted">Файл обрабатывается на сервере проекта</div>
+</section>
+<section class="workspace panel">
+<div class="section-head"><div><div class="eyebrow">EDITING DESK / 02</div><h2>Нарезка фрагментов</h2></div><span class="tag" id="projectTag">НЕТ ПРОЕКТА</span></div>
+<video id="preview" controls playsinline></video>
+<div class="controls"><label>Начало, сек<input id="start" type="number" min="0" step="0.1" value="0"></label><label>Конец, сек<input id="end" type="number" min="0" step="0.1" value="30"></label></div>
+<div class="row"><label class="grow">Формат экспорта<select id="aspect"><option value="9:16">9:16 · Shorts / Reels</option><option value="1:1">1:1 · квадрат</option><option value="16:9">16:9 · горизонтальный</option></select></label><button id="add" class="secondary" disabled>+ Добавить фрагмент</button></div>
+<div id="clips" class="clips"><div class="empty">Пока нет фрагментов. Добавь первый отрезок.</div></div>
+<button id="export" class="primary wide" disabled>СОБРАТЬ MP4</button><div id="message" class="message" role="status"></div>
+</section>
+<section class="panel history-panel"><div class="section-head"><div><div class="eyebrow">LIBRARY / 04</div><h2>История проектов</h2></div><button id="refreshHistory" class="secondary">Обновить</button></div><div id="history" class="history-list"><div class="empty">Загружаю историю…</div></div></section>
+<section class="features"><div><b>01 / CUT</b><h3>Точная нарезка</h3><p>Задавай начало и конец каждого момента.</p></div><div><b>02 / FORMAT</b><h3>Вертикальный экспорт</h3><p>Подготовка видео под мобильные платформы.</p></div><div><b>03 / HISTORY</b><h3>Контроль повторов</h3><p>Хэш исходника помогает учитывать повторно загруженные файлы в рамках проекта.</p></div></section>
+<footer>CUTLAB · BUILD 1.1 · Сделано для авторов</footer>
+</main><script src="/app.js"></script>
+</body></html>
