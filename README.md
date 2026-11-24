@@ -1,31 +1,37 @@
-# CUTLAB
+# CUTLAB 2.0
 
-Mobile-first web video clipping studio. Includes upload, manually selected clip ranges, FFmpeg MP4 export and aspect-ratio conversion.
+Мобильная веб-студия для монтажа коротких видео.
 
-## Run locally
-Requires Node.js 20+.
+## Возможности
+- Загрузка исходника с телефона или импорт публичной ссылки на поддерживаемых площадках.
+- Анализ смен сцен FFmpeg и автоматические предложения фрагментов для ручного подтверждения.
+- Ручная нарезка до 30 фрагментов.
+- Экспорт MP4 в 9:16, 1:1 и 16:9.
+- Субтитры: импорт SRT, автораспознавание речи через OpenAI Whisper API при наличии `OPENAI_API_KEY`.
+- Попытка вшивания субтитров в видео; если сборка FFmpeg не поддерживает фильтр subtitles, SRT выдаётся отдельным файлом.
+- История проектов и SHA-256 исходника для выявления идентичных загруженных файлов.
+
+## Запуск
+Требуется Node.js 20+.
 ```bash
 npm install
 npm start
 ```
-Open http://localhost:3000
+Откройте http://localhost:3000
 
-## Deploy to Render
-1. Push this folder to a GitHub repository.
-2. In Render create a Web Service from that repository.
-3. Render reads `render.yaml`; set `healthCheckPath: /health`.
-4. Persistent disk is configured for uploaded media and exports.
+## Переменные окружения
+- `PORT` — порт сервера.
+- `DATA_DIR` — каталог файлов и истории.
+- `OPENAI_API_KEY` — необязательный ключ для автоматического распознавания речи. Запросы к Whisper API могут тарифицироваться провайдером ключа.
 
-## Import from link
+## Импорт по ссылке
+Импорт поддерживает публичные URL YouTube, TikTok, Twitch, Vimeo, Instagram, Facebook и X через yt-dlp. Доступность зависит от ограничений площадки. Приватные, DRM-защищённые и платные видео не поддерживаются. Загружайте только материалы, на которые у вас есть права или разрешение.
 
-The app can import publicly accessible videos from YouTube, TikTok, Twitch, Vimeo, Instagram, Facebook and X using yt-dlp. Use this only for videos you own or have permission to download and edit. Private, DRM-protected, paywalled or otherwise restricted content is not supported. Availability depends on the source platform and its current rules. URL imports are limited to 500 MB on this deployment.
-
-## Current MVP limits
-- Clip boundaries are selected manually; automatic semantic highlight detection and transcription are not implemented yet.
-- Files are held on the server disk; use a persistent disk for deployed projects.
-- The initial upload is kept in memory metadata, so a server restart requires re-uploading the source.
-- The SHA-256 is for recognizing identical source files in this app, not for bypassing copyright or platform moderation.
-- Large videos require sufficient server RAM, disk and processing time.
-
-## История
-История загрузок и экспортов хранится в `data/history.json`. Для сохранения истории и файлов между перезапусками подключите постоянный диск и задайте `DATA_DIR` на путь его монтирования. Без постоянного диска данные могут исчезнуть при пересоздании контейнера.
+## Ограничения текущей версии
+- Анализ сцен ищет визуальные смены кадра и предлагает монтажные интервалы. Он не понимает сюжет и не гарантирует вирусность или лучшие моменты по смыслу.
+- Автоматическое распознавание речи требует `OPENAI_API_KEY`; без ключа можно загрузить собственный SRT.
+- Автоматическая генерация заголовков/описаний и интеллектуальное выделение речи/эмоций пока не включены.
+- На бесплатном Render без постоянного диска файлы и история могут исчезнуть после перезапуска или пересоздания сервиса.
+- После перезапуска сервера метаданные исходников в памяти теряются; исходник нужно загрузить повторно.
+- SHA-256 распознаёт одинаковые исходные файлы внутри проекта, но не изменяет видео для обхода авторских прав или модерации.
+- Большие файлы требуют достаточно памяти, диска и времени на обработку.
