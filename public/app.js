@@ -33,7 +33,7 @@ $("setStart").onclick=()=>{$("start").value=preview.currentTime.toFixed(1)};
 $("setEnd").onclick=()=>{$("end").value=preview.currentTime.toFixed(1)};
 $("analyze").onclick=async()=>{
  if(!project)return;say("Анализирую смены сцен. Подожди…");$("analyze").disabled=true;
- try{const r=await fetch("/api/analyze/"+project.id,{method:"POST"}),j=await r.json();if(!r.ok)throw Error(j.error);suggestions=j.suggestions||[];renderSuggestions();say("Анализ готов: "+suggestions.length+" предложений. "+(j.warning||"Выбери подходящие моменты."));}
+ try{const r=await fetch("/api/analyze/"+project.id,{method:"POST"}),j=await r.json();if(!r.ok)throw Error(j.error);suggestions=j.suggestions||[];renderSuggestions();say("Анализ готов: "+suggestions.length+" предложений. "+(j.transcriptBased?"Есть ранжирование по речи. ":"")+(j.warning||"Выбери подходящие моменты."));}
  catch(e){say("Не удалось проанализировать: "+e.message)}finally{$("analyze").disabled=false}
 };
 function renderSuggestions(){
@@ -41,7 +41,7 @@ function renderSuggestions(){
  if(!suggestions.length){box.innerHTML='<div class="empty">Яркие смены сцен не найдены. Попробуй ручную нарезку.</div>';return}
  suggestions.forEach((s,i)=>{
   const el=document.createElement("div");el.className="suggestion";
-  el.innerHTML='<div><b>Момент '+(i+1)+'</b><small>'+s.start.toFixed(1)+'–'+s.end.toFixed(1)+' сек · '+escapeHtml(s.reason||"Предложение")+'</small></div><button class="secondary">Добавить</button>';
+  el.innerHTML='<div><b>Момент '+(i+1)+(Number.isFinite(s.score)?' · '+s.score+'/100':'')+'</b><small>'+s.start.toFixed(1)+'–'+s.end.toFixed(1)+' сек · '+escapeHtml(s.reason||"Предложение")+'</small></div><button class="secondary">Добавить</button>';
   el.querySelector("button").onclick=()=>{if(!clips.some(c=>Math.abs(c.start-s.start)<.2)){clips.push({start:s.start,end:s.end});render();say("Фрагмент добавлен в монтаж.");}};
   el.querySelector("div").onclick=()=>{preview.currentTime=s.start;preview.play().catch(()=>{});};
   box.append(el);
