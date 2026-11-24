@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-let project=null, clips=[], suggestions=[], hasCaptions=false;
+let project=null, clips=[], suggestions=[], hasCaptions=false, undoStack=[];
 const file=$("file"), preview=$("preview");
 $("choose").onclick=()=>file.click();
 function say(s){$("message").textContent=s}
@@ -9,7 +9,7 @@ function setReady(){
  $("projectTag").textContent="ПРОЕКТ ГОТОВ";
 }
 function setProject(j){
- project=j;try{localStorage.setItem("cutlab:lastProject",j.id)}catch{}clips=[];suggestions=[];render();setReady();
+ project=j;try{localStorage.setItem("cutlab:lastProject",j.id)}catch{}clips=[];suggestions=[];undoStack=[];render();setReady();
  preview.src="/api/source/"+j.id;preview.style.display="block";preview.load();
  $("start").value=0;$("end").value=30;
  $("fileInfo").textContent=(j.name||"Видео")+(j.size?" · "+(j.size/1024/1024).toFixed(1)+" МБ":"");
@@ -42,7 +42,7 @@ function renderSuggestions(){
  suggestions.forEach((s,i)=>{
   const el=document.createElement("div");el.className="suggestion";
   el.innerHTML='<div><b>Момент '+(i+1)+(Number.isFinite(s.score)?' · '+s.score+'/100':'')+'</b><small>'+s.start.toFixed(1)+'–'+s.end.toFixed(1)+' сек · '+escapeHtml(s.reason||"Предложение")+'</small></div><button class="secondary">Добавить</button>';
-  el.querySelector("button").onclick=()=>{if(!clips.some(c=>Math.abs(c.start-s.start)<.2)){clips.push({start:s.start,end:s.end});render();say("Фрагмент добавлен в монтаж.");}};
+  el.querySelector("button").onclick=()=>{if(!clips.some(c=>Math.abs(c.start-s.start)<.2)){saveUndo();clips.push({start:s.start,end:s.end});render();say("Фрагмент добавлен в монтаж.");}};
   el.querySelector("div").onclick=()=>{preview.currentTime=s.start;preview.play().catch(()=>{});};
   box.append(el);
  });
@@ -62,16 +62,19 @@ $("uploadSrt").onclick=async()=>{
 $("add").onclick=()=>{
  if(!project)return;const start=Number($("start").value),end=Number($("end").value);
  if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start)return say("Проверь начало и конец фрагмента.");
- clips.push({start,end});render();say("Фрагмент добавлен.");
+ saveUndo();clips.push({start,end});render();say("Фрагмент добавлен.");
 };
+function saveUndo(){undoStack.push(JSON.stringify(clips));if(undoStack.length>30)undoStack.shift();$("undo").disabled=false}
+$("undo").onclick=()=>{if(!undoStack.length)return;clips=JSON.parse(undoStack.pop());render();say("Последнее действие отменено.");};
 function render(){
  const box=$("clips");box.innerHTML="";
+ $("undo").disabled=!undoStack.length;
  if(!clips.length){box.innerHTML='<div class="empty">Пока нет фрагментов. Выбери предложение или добавь вручную.</div>';return}
  clips.forEach((c,i)=>{
   const el=document.createElement("div");el.className="clip";
   el.innerHTML='<div><b>ФРАГМЕНТ '+String(i+1).padStart(2,"0")+'</b><small>'+c.start.toFixed(1)+' — '+c.end.toFixed(1)+' сек</small></div><div class="clip-actions"><button class="previewClip">▶</button><button class="removeClip" aria-label="Удалить">×</button></div>';
   el.querySelector(".previewClip").onclick=()=>{preview.currentTime=c.start;preview.play().catch(()=>{});};
-  el.querySelector(".removeClip").onclick=()=>{clips.splice(i,1);render()};
+  el.querySelector(".removeClip").onclick=()=>{saveUndo();clips.splice(i,1);render()};
   box.append(el);
  });
 }
