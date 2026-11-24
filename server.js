@@ -77,7 +77,7 @@ const ALLOWED_HOSTS = ["youtube.com","youtu.be","tiktok.com","twitch.tv","clips.
 function validateSourceUrl(raw) {
   let u; try { u = new URL(raw); } catch { throw new Error("Вставьте корректную ссылку"); }
   if (u.protocol !== "https:" || u.username || u.password) throw new Error("Нужна обычная HTTPS-ссылка");
-  const host = u.hostname.toLowerCase().replace(/^www\\./, "");
+  const host = u.hostname.toLowerCase().replace(/^www\./, "");
   if (!ALLOWED_HOSTS.some(d => host === d || host.endsWith("." + d))) throw new Error("Пока поддерживаются YouTube, TikTok, Twitch, Vimeo, Instagram, Facebook и X");
   return u.toString();
 }
@@ -86,7 +86,7 @@ app.post("/api/import-url", async (req, res) => {
     const url = validateSourceUrl(String(req.body?.url || "").trim());
     const id = crypto.randomUUID();
     await youtubedl(url, { output: path.join(UPLOADS, id + ".%(ext)s"), format: "bv*+ba/b", mergeOutputFormat: "mp4", remuxVideo: "mp4", noPlaylist: true, noWarnings: true, noProgress: true, socketTimeout: 30, maxFilesize: "500M", restrictFilenames: true });
-    const candidates = fs.readdirSync(UPLOADS).filter(n => n.startsWith(id + ".") && /\\.(mp4|mov|mkv|webm)$/i.test(n));
+    const candidates = fs.readdirSync(UPLOADS).filter(n => n.startsWith(id + ".") && /\.(mp4|mov|mkv|webm)$/i.test(n));
     if (!candidates.length) throw new Error("Платформа не вернула доступный видеофайл");
     const filename = candidates[0], full = path.join(UPLOADS, filename), stat = fs.statSync(full);
     const hash = await hashFile(full), source = new URL(url).hostname;
