@@ -53,6 +53,13 @@ const upload = multer({
   fileFilter: (_req, file, cb) => file.mimetype.startsWith("video/") ? cb(null, true) : cb(new Error("Можно загружать только видео"))
 });
 const jobs = new Map();
+app.get("/api/source/:id", (req, res) => {
+  const job = jobs.get(req.params.id);
+  if (!job) return res.status(404).json({ error: "Исходник больше недоступен — загрузите видео заново" });
+  const file = path.join(UPLOADS, job.filename);
+  if (!fs.existsSync(file)) return res.status(404).json({ error: "Файл не найден" });
+  res.sendFile(file);
+});
 function runFFmpeg(args) {
   return new Promise((resolve, reject) => {
     const p = spawn(ffmpeg, args);
