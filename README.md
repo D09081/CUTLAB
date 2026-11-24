@@ -16,6 +16,10 @@ Open http://localhost:3000
 3. Render reads `render.yaml`; set `healthCheckPath: /health`.
 4. Persistent disk is configured for uploaded media and exports.
 
+## Import from link
+
+The app can import publicly accessible videos from YouTube, TikTok, Twitch, Vimeo, Instagram, Facebook and X using yt-dlp. Use this only for videos you own or have permission to download and edit. Private, DRM-protected, paywalled or otherwise restricted content is not supported. Availability depends on the source platform and its current rules. URL imports are limited to 500 MB on this deployment.
+
 ## Current MVP limits
 - Clip boundaries are selected manually; automatic semantic highlight detection and transcription are not implemented yet.
 - Files are held on the server disk; use a persistent disk for deployed projects.
