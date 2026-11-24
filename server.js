@@ -260,10 +260,10 @@ app.post("/api/clips",async(req,res)=>{
       const dims=aspect==="9:16"?[1080,1920]:aspect==="1:1"?[1080,1080]:[1920,1080];
       const fitFilter=`scale=${dims[0]}:${dims[1]}:force_original_aspect_ratio=decrease,pad=${dims[0]}:${dims[1]}:(ow-iw)/2:(oh-ih)/2`;
       const fillFilter=`scale=${dims[0]}:${dims[1]}:force_original_aspect_ratio=increase,crop=${dims[0]}:${dims[1]}`;
-      const modes=makeVariants?["fit","fill"]:[cropMode];
+      const modes=makeVariants?[{mode:"fit",label:"A-fit",preset:subtitlePreset},{mode:"fill",label:"B-fill",preset:subtitlePreset==="clean"?"streamer":"clean"}]:[{mode:cropMode,label:cropMode,preset:subtitlePreset}];
       for(let v=0;v<modes.length;v++){
-        const mode=modes[v],vf=mode==="fill"?fillFilter:fitFilter;
-        const suffix=makeVariants?(mode==="fit"?"-A-fit":"-B-fill"):(mode==="fill"?"-fill":"");
+        const variant=modes[v],mode=variant.mode,vf=mode==="fill"?fillFilter:fitFilter;
+        const suffix=makeVariants?"-"+variant.label:(mode==="fill"?"-fill":"");
         const editorPrefix=safeEditor?safeEditor+"-":"";
         const outName=`${editorPrefix}${id}-${Date.now()}-${i+1}${suffix}.mp4`,out=path.join(EXPORTS,outName);
         const base=["-y","-ss",String(start),"-i",input,"-t",String(end-start)];
