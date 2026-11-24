@@ -100,7 +100,8 @@ function scoreSpeechMoments(segments, duration) {
     const text=selected.map(s=>s.text).join(" ").replace(/\s+/g," ").trim();
     const words=(text.match(/[\p{L}\p{N}]+/gu)||[]);
     if(words.length<18) continue;
-    const hook=hooks.test(text), feeling=emotion.test(text), concrete=numbers.test(text);
+    const opening=(text.match(/^[^.!?…]{1,180}/)||[""])[0];
+    const hook=hooks.test(opening), feeling=emotion.test(text), concrete=numbers.test(text);
     const density=Math.min(1,words.length/105);
     const beginsWell=!filler.test(text);
     const endsWell=/[.!?…][”"»)]?\s*$/.test(text);
