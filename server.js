@@ -118,21 +118,32 @@ app.post("/api/import-url", async (req,res) => {
 app.post("/api/analyze/:id", async (req,res) => {
   try {
     const {job,input}=getJob(req.params.id), duration=await mediaDuration(input);
-    const log=await runFFmpeg(["-i",input,"-vf","select='gt(scene,0.22)',showinfo","-an","-f","null","-"]);
-    const times=[...log.matchAll(/pts_time:([0-9.]+)/g)].map(m=>Number(m[1])).filter(t=>t>3&&t<duration-3);
+    if(!Number.isFinite(duration)||duration<1) throw new Error("Не удалось определить длительность исходника");
+    let times=[], sceneAnalysis=true, sceneError="";
+    try {
+      // spawn() does not invoke a shell: escape the comma for FFmpeg's filter parser,
+      // but do not wrap the expression in shell quotes.
+      const log=await runFFmpeg(["-hide_banner","-i",input,"-vf","select=gt(scene\\,0.18),showinfo","-an","-f","null","-"]);
+      times=[...log.matchAll(/pts_time:([0-9.]+)/g)].map(m=>Number(m[1])).filter(t=>Number.isFinite(t)&&t>2&&t<duration-2);
+    } catch(e) { sceneAnalysis=false; sceneError=String(e.message||e).slice(-400); }
     const candidates=[];
     for(const t of times) {
-      const start=Math.max(0,Math.min(t-11,duration-24)),end=Math.min(duration,start+35);
-      if(end-start<8) continue;
-      if(candidates.every(c=>Math.abs(c.start-start)>16)) candidates.push({start:Number(start.toFixed(1)),end:Number(end.toFixed(1)),reason:"Смена сцены"});
+      const start=Math.max(0,Math.min(t-12,duration-30)),end=Math.min(duration,start+35);
+      if(end-start<6) continue;
+      if(candidates.every(c=>Math.abs(c.start-start)>14)) candidates.push({start:Number(start.toFixed(1)),end:Number(end.toFixed(1)),reason:"Смена сцены"});
     }
     if(!candidates.length) {
-      const step=Math.min(60,Math.max(20,duration/4));
-      for(let t=0;t<duration;t+=step) if(Math.min(duration,t+step)-t>=8) candidates.push({start:Number(t.toFixed(1)),end:Number(Math.min(duration,t+step).toFixed(1)),reason:"Фрагмент по таймлайну"});
+      const count=Math.min(12,Math.max(1,Math.ceil(duration/45)));
+      const segment=Math.min(35,Math.max(8,duration/count));
+      for(let i=0;i<count;i++) {
+        const start=Math.min(Math.max(0,duration-segment),i*segment);
+        const end=Math.min(duration,start+segment);
+        if(end-start>=5&&candidates.every(c=>Math.abs(c.start-start)>2)) candidates.push({start:Number(start.toFixed(1)),end:Number(end.toFixed(1)),reason:sceneAnalysis?"Фрагмент по таймлайну":"Резервный подбор по длительности"});
+      }
     }
     const suggestions=candidates.slice(0,12);
     job.duration=duration;
-    res.json({ok:true,duration,suggestions,analysis:"Предварительный анализ по сменам сцен. Это монтажные подсказки, не оценка смысла или вирусности."});
+    res.json({ok:true,duration,suggestions,sceneAnalysis,warning:sceneError||(!times.length?"Смены сцен не обнаружены; показаны равномерно распределённые фрагменты.":""),analysis:"CUTLAB ищет визуальные смены сцен и предлагает интервалы для проверки редактором. Он не определяет смысл и вирусность."});
   } catch(e) { res.status(400).json({error:e.message||"Не удалось проанализировать видео"}); }
 });
 app.post("/api/captions/:id", async (req,res) => {
