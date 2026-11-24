@@ -87,42 +87,51 @@ function parseSrt(srt) {
 }
 
 function scoreSpeechMoments(segments, duration) {
-  const hooks = /\b(почему|как|что если|представь|секрет|ошибка|никогда|правда|оказалось|вот почему|смотри|знаешь|why|how|what if|secret|mistake|never|truth|imagine|watch)\b/i;
-  const emotion = /(смешн|шок|ужас|невероят|безум|страш|злост|провал|побед|обман|ненавиж|люблю|счаст|катастроф|funny|crazy|insane|amazing|fail|disaster|love|hate|shock|wild)/i;
-  const numbers = /(\d+|\bтысяч|\bмиллион|\bпроцент|рубл|доллар|\bтыс\b|\bmillion|\bthousand|\bpercent|\$|€)/i;
-  const filler = /^(ну|эм|ээ|короче|значит|как бы|в общем|и вот|well|um|uh|so|like)\b/i;
-  const rows = segments.filter(s => Number.isFinite(s.start) && Number.isFinite(s.end) && s.end>s.start && s.text);
-  const candidates=[];
-  for (const first of rows) {
-    const start=Math.max(0,first.start-0.25), end=Math.min(duration,start+38);
-    if(end-start<14) continue;
-    const selected=rows.filter(s=>s.start<end&&s.end>start);
+  const hooks = /(почему|как это|что если|представь|секрет|ошибка|никогда|правда|оказалось|вот почему|смотри|знаешь|не поверишь|why|how|what if|secret|mistake|never|truth|imagine|watch)/i;
+  const emotion = /(смешн|шок|ужас|невероят|безум|страш|провал|побед|обман|ненавиж|люблю|счаст|катастроф|серьёзно|офиг|funny|crazy|insane|amazing|fail|disaster|love|hate|shock|wild)/i;
+  const concrete = /(\d+|тысяч|миллион|процент|рубл|доллар|евро|million|thousand|percent|\$|€)/i;
+  const filler = /^(ну|эм|ээ|короче|значит|как бы|в общем|и вот|типа|well|um|uh|so|like)\b/i;
+  const rows = segments.filter(s => Number.isFinite(Number(s.start)) && Number.isFinite(Number(s.end)) && Number(s.end)>Number(s.start) && s.text)
+    .map(s=>({start:Number(s.start),end:Number(s.end),text:String(s.text).trim()})).sort((x,y)=>x.start-y.start);
+  if(!rows.length) return [];
+  const first=rows[0].start, last=Math.min(duration,rows[rows.length-1].end), candidates=[];
+  // Scan overlapping windows anchored to speech, not arbitrary scene changes.
+  for(let anchor=first;anchor<last-14;anchor+=8){
+    const startRow=rows.find(s=>s.start>=anchor-1.5);
+    if(!startRow) continue;
+    const start=Math.max(0,startRow.start-0.2), targetEnd=Math.min(duration,start+38);
+    const selected=rows.filter(s=>s.start<targetEnd&&s.end>start);
+    if(!selected.length) continue;
+    const end=Math.min(targetEnd,selected[selected.length-1].end+0.25), span=end-start;
+    if(span<14) continue;
     const text=selected.map(s=>s.text).join(" ").replace(/\s+/g," ").trim();
-    const words=(text.match(/[\p{L}\p{N}]+/gu)||[]);
+    const words=text.match(/[\p{L}\p{N}]+/gu)||[];
     if(words.length<18) continue;
-    const opening=(text.match(/^[^.!?…]{1,180}/)||[""])[0];
-    const hook=hooks.test(opening), feeling=emotion.test(text), concrete=numbers.test(text);
-    const density=Math.min(1,words.length/105);
-    const beginsWell=!filler.test(text);
-    const endsWell=/[.!?…][”"»)]?\s*$/.test(text);
-    let score= Math.round((hook?24:7)+(feeling?18:0)+(concrete?12:0)+density*18+(beginsWell?10:0)+(endsWell?10:3)+Math.min(8,selected.length));
+    const opening=selected.slice(0,3).map(s=>s.text).join(" ").slice(0,220);
+    const ending=selected.slice(-2).map(s=>s.text).join(" ");
+    const hook=hooks.test(opening), feeling=emotion.test(text), hasConcrete=concrete.test(text);
+    const density=Math.min(1,words.length/(span*2.5));
+    const vocabulary=new Set(words.map(w=>w.toLowerCase())).size/Math.max(1,words.length);
+    const beginsWell=!filler.test(opening), endsWell=/[.!?…][”"»)]?\s*$/.test(ending), question=/\?/.test(opening);
+    const pauses=selected.slice(1).filter((x,i)=>x.start-selected[i].end>2.2).length;
+    let score=Math.round(10+(hook?18:0)+(question?7:0)+(feeling?15:0)+(hasConcrete?10:0)+density*22+vocabulary*10+(beginsWell?6:0)+(endsWell?8:0)-pauses*2);
+    score=Math.max(1,Math.min(100,score));
     const reasons=[];
-    if(hook) reasons.push("сильная фраза в начале");
-    if(feeling) reasons.push("эмоциональная реплика");
-    if(concrete) reasons.push("конкретика или цифры");
-    if(density>.65) reasons.push("плотная речь");
-    if(endsWell) reasons.push("мысль завершена");
-    candidates.push({start:Number(start.toFixed(1)),end:Number(end.toFixed(1)),score,reason:reasons.slice(0,3).join(" · ")||"содержательный фрагмент",transcriptBased:true});
+    if(hook||question) reasons.push("цепляющее начало");
+    if(feeling) reasons.push("эмоциональная речь");
+    if(hasConcrete) reasons.push("конкретика и цифры");
+    if(density>.62) reasons.push("плотная речь");
+    if(endsWell) reasons.push("завершённая мысль");
+    candidates.push({start:Number(start.toFixed(2)),end:Number(end.toFixed(2)),score,reason:reasons.slice(0,3).join(" · ")||"содержательный фрагмент",transcriptBased:true});
   }
-  candidates.sort((a,b)=>b.score-a.score);
+  candidates.sort((x,y)=>y.score-x.score);
   const picked=[];
-  for(const item of candidates){
-    if(picked.every(x=>Math.max(0,Math.min(x.end,item.end)-Math.max(x.start,item.start))<Math.min(x.end-x.start,item.end-item.start)*0.35)){
-      picked.push(item);
-      if(picked.length===12) break;
+  for(const c of candidates){
+    if(picked.every(x=>Math.max(0,Math.min(x.end,c.end)-Math.max(x.start,c.start))<Math.min(x.end-x.start,c.end-c.start)*0.25)){
+      picked.push(c); if(picked.length>=12) break;
     }
   }
-  return picked;
+  return picked.sort((x,y)=>x.start-y.start);
 }
 app.post("/api/upload", upload.single("video"), async (req, res) => {
   try {
