@@ -85,6 +85,44 @@ function parseSrt(srt) {
   }
   return segments;
 }
+
+function scoreSpeechMoments(segments, duration) {
+  const hooks = /\b(почему|как|что если|представь|секрет|ошибка|никогда|правда|оказалось|вот почему|смотри|знаешь|why|how|what if|secret|mistake|never|truth|imagine|watch)\b/i;
+  const emotion = /(смешн|шок|ужас|невероят|безум|страш|злост|провал|побед|обман|ненавиж|люблю|счаст|катастроф|funny|crazy|insane|amazing|fail|disaster|love|hate|shock|wild)/i;
+  const numbers = /(\d+|\bтысяч|\bмиллион|\bпроцент|рубл|доллар|\bтыс\b|\bmillion|\bthousand|\bpercent|\$|€)/i;
+  const filler = /^(ну|эм|ээ|короче|значит|как бы|в общем|и вот|well|um|uh|so|like)\b/i;
+  const rows = segments.filter(s => Number.isFinite(s.start) && Number.isFinite(s.end) && s.end>s.start && s.text);
+  const candidates=[];
+  for (const first of rows) {
+    const start=Math.max(0,first.start-0.25), end=Math.min(duration,start+38);
+    if(end-start<14) continue;
+    const selected=rows.filter(s=>s.start<end&&s.end>start);
+    const text=selected.map(s=>s.text).join(" ").replace(/\s+/g," ").trim();
+    const words=(text.match(/[\p{L}\p{N}]+/gu)||[]);
+    if(words.length<18) continue;
+    const hook=hooks.test(text), feeling=emotion.test(text), concrete=numbers.test(text);
+    const density=Math.min(1,words.length/105);
+    const beginsWell=!filler.test(text);
+    const endsWell=/[.!?…][”"»)]?\s*$/.test(text);
+    let score= Math.round((hook?24:7)+(feeling?18:0)+(concrete?12:0)+density*18+(beginsWell?10:0)+(endsWell?10:3)+Math.min(8,selected.length));
+    const reasons=[];
+    if(hook) reasons.push("сильная фраза в начале");
+    if(feeling) reasons.push("эмоциональная реплика");
+    if(concrete) reasons.push("конкретика или цифры");
+    if(density>.65) reasons.push("плотная речь");
+    if(endsWell) reasons.push("мысль завершена");
+    candidates.push({start:Number(start.toFixed(1)),end:Number(end.toFixed(1)),score,reason:reasons.slice(0,3).join(" · ")||"содержательный фрагмент",transcriptBased:true});
+  }
+  candidates.sort((a,b)=>b.score-a.score);
+  const picked=[];
+  for(const item of candidates){
+    if(picked.every(x=>Math.max(0,Math.min(x.end,item.end)-Math.max(x.start,item.start))<Math.min(x.end-x.start,item.end-item.start)*0.35)){
+      picked.push(item);
+      if(picked.length===12) break;
+    }
+  }
+  return picked;
+}
 app.post("/api/upload", upload.single("video"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "Файл не получен" });
@@ -141,9 +179,13 @@ app.post("/api/analyze/:id", async (req,res) => {
         if(end-start>=5&&candidates.every(c=>Math.abs(c.start-start)>2)) candidates.push({start:Number(start.toFixed(1)),end:Number(end.toFixed(1)),reason:sceneAnalysis?"Фрагмент по таймлайну":"Резервный подбор по длительности"});
       }
     }
-    const suggestions=candidates.slice(0,12);
+    let suggestions=candidates.slice(0,12), transcriptBased=false;
+    if(job.captions?.segments?.length){
+      const ranked=scoreSpeechMoments(job.captions.segments,duration);
+      if(ranked.length){suggestions=ranked;transcriptBased=true;}
+    }
     job.duration=duration;
-    res.json({ok:true,duration,suggestions,sceneAnalysis,warning:sceneError||(!times.length?"Смены сцен не обнаружены; показаны равномерно распределённые фрагменты.":""),analysis:"CUTLAB ищет визуальные смены сцен и предлагает интервалы для проверки редактором. Он не определяет смысл и вирусность."});
+    res.json({ok:true,duration,suggestions,sceneAnalysis,transcriptBased,warning:transcriptBased?"Моменты ранжированы по распознанной речи. Оценка ориентировочная — проверь таймкоды перед экспортом.":sceneError||(!times.length?"Смены сцен не обнаружены; показаны равномерно распределённые фрагменты.":"Для смыслового ранжирования сначала добавь субтитры через «Субтитры AI»."),analysis:transcriptBased?"Оценка по хукам, эмоциям, конкретике, плотности речи и завершённости фразы.":"Пока доступен только визуальный анализ смен сцен; смысловая оценка появится после распознавания речи."});
   } catch(e) { res.status(400).json({error:e.message||"Не удалось проанализировать видео"}); }
 });
 app.post("/api/captions/:id", async (req,res) => {
