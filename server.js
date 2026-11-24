@@ -225,9 +225,19 @@ app.get("/api/jobs/:id",(req,res)=>{
   try { const {job}=getJob(req.params.id);res.json({ok:true,job:{id:job.id,name:job.original,size:job.size,hash:job.hash,clips:job.clips,duration:job.duration,captions:job.captions?{count:job.captions.segments.length,url:"/captions/"+job.captions.filename}:null}}); }
   catch(e){res.status(404).json({error:e.message});}
 });
+function subtitleForceStyle(preset, size) {
+  const fontSize = [44, 52, 60].includes(Number(size)) ? Number(size) : 52;
+  const styles = {
+    clean: { primary: "&H00FFFFFF", outline: "&HCC000000", bold: 0, border: 2 },
+    streamer: { primary: "&H0000D9FF", outline: "&HCC000000", bold: 1, border: 3 },
+    neon: { primary: "&H00F0D080", outline: "&HCC111111", bold: 1, border: 3 }
+  };
+  const style = styles[preset] || styles.clean;
+  return "FontName=DejaVu Sans,FontSize=" + fontSize + ",Bold=" + style.bold + ",PrimaryColour=" + style.primary + ",OutlineColour=" + style.outline + ",BorderStyle=1,Outline=" + style.border + ",Shadow=1,Alignment=2,MarginV=110";
+}
 app.post("/api/clips",async(req,res)=>{
   try {
-    const {id,clips,aspect="9:16",burnSubtitles=false,cropMode="fit",editorName="",makeVariants=false}=req.body||{}, {job,input}=getJob(id);
+    const {id,clips,aspect="9:16",burnSubtitles=false,subtitlePreset="clean",subtitleSize=52,cropMode="fit",editorName="",makeVariants=false}=req.body||{}, {job,input}=getJob(id);
     if(!Array.isArray(clips)||!clips.length||clips.length>30) throw new Error("Добавьте от 1 до 30 фрагментов");
     if(!["9:16","1:1","16:9"].includes(aspect)) throw new Error("Неизвестный формат кадра");
     if(!["fit","fill"].includes(cropMode)) throw new Error("Неизвестный режим кадрирования");
@@ -253,7 +263,7 @@ app.post("/api/clips",async(req,res)=>{
           const srt=makeSrt(job.captions.segments,start,end),srtName=outName+".srt";
           fs.writeFileSync(path.join(CAPTIONS,srtName),srt);
           const srtPath=path.join(CAPTIONS,srtName).replace(/\\\\/g,"/").replace(/:/g,"\\\\:");
-          try { await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
+          try { const forceStyle=subtitleForceStyle(subtitlePreset,subtitleSize); await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}':force_style='${forceStyle}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
           catch { await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); }
         } else await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
         const subtitleUrl=job.captions?"/captions/"+outName+".srt":null;
