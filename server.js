@@ -218,14 +218,14 @@ app.post("/api/transcribe/:id", async (req,res) => {
     await runFFmpeg(["-y","-i",input,"-vn","-ac","1","-ar","16000","-b:a","48k",audioPath]);
     const audio=fs.readFileSync(audioPath);
     if(audio.length>24*1024*1024) throw new Error("Аудиодорожка больше 24 МБ. Для длинного видео сначала нарежьте исходник на части.");
-    const form=new FormData();form.append("file",new Blob([audio],{type:"audio/mpeg"}), "audio.mp3");form.append("model",provider.model);form.append("response_format","verbose_json");
+    const form=new FormData();form.append("file",new Blob([audio],{type:"audio/mpeg"}), "audio.mp3");form.append("model",provider.model);form.append("response_format","verbose_json");form.append("timestamp_granularities[]","segment");form.append("timestamp_granularities[]","word");
     const response=await fetch(provider.endpoint,{method:"POST",headers:{Authorization:"Bearer "+provider.key},body:form});
     const data=await response.json();if(!response.ok) throw new Error(data.error?.message||"Сервис распознавания не ответил");
-    const segments=(data.segments||[]).map(s=>({start:s.start,end:s.end,text:s.text}));
+    const segments=(data.segments||[]).map(s=>({start:s.start,end:s.end,text:s.text}));const words=(data.words||[]).map(w=>({start:w.start,end:w.end,word:w.word})).filter(w=>Number.isFinite(w.start)&&Number.isFinite(w.end)&&w.end>w.start);
     if(!segments.length&&data.text) segments.push({start:0,end:Math.max(2,job.duration||10),text:data.text});
     if(!segments.length) throw new Error("Речь не распознана");
-    const filename=job.id+".srt";fs.writeFileSync(path.join(CAPTIONS,filename),makeSrt(segments));job.captions={filename,segments};
-    res.json({ok:true,count:segments.length,text:data.text||"",url:"/captions/"+filename});
+    const filename=job.id+".srt";fs.writeFileSync(path.join(CAPTIONS,filename),makeSrt(segments));job.captions={filename,segments,words};
+    res.json({ok:true,count:segments.length,wordCount:words.length,text:data.text||"",url:"/captions/"+filename});
   } catch(e) { res.status(400).json({error:e.message||"Ошибка распознавания"}); }
   finally { if(audioPath&&fs.existsSync(audioPath)) fs.unlinkSync(audioPath); }
 });
