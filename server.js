@@ -149,13 +149,13 @@ app.post("/api/transcribe/:id", async (req,res) => {
   let audioPath;
   try {
     const {job,input}=getJob(req.params.id);
-    if(!process.env.OPENAI_API_KEY) return res.status(503).json({error:"Автораспознавание речи пока не подключено: добавьте OPENAI_API_KEY в переменные Render. Можно уже сейчас загрузить готовый файл .srt."});
+    const provider = process.env.GROQ_API_KEY ? { key: process.env.GROQ_API_KEY, endpoint: "https://api.groq.com/openai/v1/audio/transcriptions", model: "whisper-large-v3-turbo" } : process.env.OPENAI_API_KEY ? { key: process.env.OPENAI_API_KEY, endpoint: "https://api.openai.com/v1/audio/transcriptions", model: "whisper-1" } : null;\n    if(!provider) return res.status(503).json({error:"Автораспознавание не подключено. Добавьте GROQ_API_KEY (есть бесплатный лимит) или OPENAI_API_KEY в переменные Render. Можно загрузить готовый .srt."});
     audioPath=path.join(DATA,job.id+"-audio.mp3");
     await runFFmpeg(["-y","-i",input,"-vn","-ac","1","-ar","16000","-b:a","48k",audioPath]);
     const audio=fs.readFileSync(audioPath);
     if(audio.length>24*1024*1024) throw new Error("Аудиодорожка больше 24 МБ. Для длинного видео сначала нарежьте исходник на части.");
-    const form=new FormData();form.append("file",new Blob([audio],{type:"audio/mpeg"}), "audio.mp3");form.append("model","whisper-1");form.append("response_format","verbose_json");
-    const response=await fetch("https://api.openai.com/v1/audio/transcriptions",{method:"POST",headers:{Authorization:"Bearer "+process.env.OPENAI_API_KEY},body:form});
+    const form=new FormData();form.append("file",new Blob([audio],{type:"audio/mpeg"}), "audio.mp3");form.append("model",provider.model);form.append("response_format","verbose_json");
+    const response=await fetch(provider.endpoint,{method:"POST",headers:{Authorization:"Bearer "+provider.key},body:form});
     const data=await response.json();if(!response.ok) throw new Error(data.error?.message||"Сервис распознавания не ответил");
     const segments=(data.segments||[]).map(s=>({start:s.start,end:s.end,text:s.text}));
     if(!segments.length&&data.text) segments.push({start:0,end:Math.max(2,job.duration||10),text:data.text});
