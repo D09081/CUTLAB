@@ -50,13 +50,13 @@ function renderSuggestions(){
 $("transcribe").onclick=async()=>{
  if(!project)return;say("Распознаю речь. Это может занять несколько минут…");$("transcribe").disabled=true;
  try{const r=await fetch("/api/transcribe/"+project.id,{method:"POST"}),j=await r.json();if(!r.ok)throw Error(j.error);
- hasCaptions=true;$("captionStatus").textContent=j.count+" ФРАЗ";say("Субтитры готовы. При экспорте включено вшивание, если сервер поддерживает его.");await loadHistory();
+ hasCaptions=true;$("captionStatus").textContent=j.count+" ФРАЗ";say("Речь распознана. Если сервис вернул тайминги слов, экспорт получит karaoke-подсветку; иначе будут обычные фразовые субтитры.");await loadHistory();
  }catch(e){say(e.message)}finally{$("transcribe").disabled=false}
 };
 $("uploadSrt").onclick=async()=>{
  if(!project)return;const f=$("srtFile").files[0];if(!f)return say("Сначала выбери файл .SRT");
  try{const srt=await f.text(),r=await fetch("/api/captions/"+project.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({srt})}),j=await r.json();if(!r.ok)throw Error(j.error);
- hasCaptions=true;$("captionStatus").textContent=j.count+" ФРАЗ";say("Субтитры загружены: "+j.count+" фраз.");await loadHistory();
+ hasCaptions=true;$("captionStatus").textContent=j.count+" ФРАЗ";say("Субтитры загружены: "+j.count+" фраз. Для karaoke-подсветки нужны тайминги слов.");await loadHistory();
  }catch(e){say("Ошибка субтитров: "+e.message)}
 };
 $("add").onclick=()=>{
