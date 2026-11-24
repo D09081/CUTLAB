@@ -5,6 +5,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
 const ffmpeg = require("ffmpeg-static");
+const youtubedl = require("youtube-dl-exec");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,6 +73,30 @@ app.post("/api/upload", upload.single("video"), async (req, res) => {
     res.json({ ok: true, id, name: job.original, size: job.size, hash });
   } catch (e) { res.status(500).json({ error: e.message || "Не удалось загрузить видео" }); }
 });
+const ALLOWED_HOSTS = ["youtube.com","youtu.be","tiktok.com","twitch.tv","clips.twitch.tv","vimeo.com","instagram.com","facebook.com","fb.watch","x.com","twitter.com"];
+function validateSourceUrl(raw) {
+  let u; try { u = new URL(raw); } catch { throw new Error("Вставьте корректную ссылку"); }
+  if (u.protocol !== "https:" || u.username || u.password) throw new Error("Нужна обычная HTTPS-ссылка");
+  const host = u.hostname.toLowerCase().replace(/^www\\./, "");
+  if (!ALLOWED_HOSTS.some(d => host === d || host.endsWith("." + d))) throw new Error("Пока поддерживаются YouTube, TikTok, Twitch, Vimeo, Instagram, Facebook и X");
+  return u.toString();
+}
+app.post("/api/import-url", async (req, res) => {
+  try {
+    const url = validateSourceUrl(String(req.body?.url || "").trim());
+    const id = crypto.randomUUID();
+    await youtubedl(url, { output: path.join(UPLOADS, id + ".%(ext)s"), format: "bv*+ba/b", mergeOutputFormat: "mp4", remuxVideo: "mp4", noPlaylist: true, noWarnings: true, noProgress: true, socketTimeout: 30, maxFilesize: "500M", restrictFilenames: true });
+    const candidates = fs.readdirSync(UPLOADS).filter(n => n.startsWith(id + ".") && /\\.(mp4|mov|mkv|webm)$/i.test(n));
+    if (!candidates.length) throw new Error("Платформа не вернула доступный видеофайл");
+    const filename = candidates[0], full = path.join(UPLOADS, filename), stat = fs.statSync(full);
+    const hash = await hashFile(full), source = new URL(url).hostname;
+    const job = { id, filename, original: "Импорт по ссылке", size: stat.size, hash, clips: [], createdAt: Date.now(), source };
+    jobs.set(id, job);
+    addHistory({ type: "import", id, name: job.original, source, size: job.size, hash, createdAt: job.createdAt, status: "Импортировано" });
+    res.json({ ok: true, id, name: job.original, size: job.size, hash, source });
+  } catch (e) { res.status(400).json({ error: String(e.message || "Не удалось импортировать видео").slice(0,700) }); }
+});
+
 app.get("/api/history", (_req, res) => res.json({ ok: true, items: readHistory() }));
 app.get("/api/jobs/:id", (req, res) => {
   const job = jobs.get(req.params.id);
