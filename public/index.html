@@ -31,6 +31,11 @@
 <div class="controls"><label>Начало, сек<input id="start" type="number" min="0" step="0.1" value="0"></label><label>Конец, сек<input id="end" type="number" min="0" step="0.1" value="30"></label></div>
 <div class="row seek-row"><button id="setStart" class="secondary" disabled>Начало = позиция</button><button id="setEnd" class="secondary" disabled>Конец = позиция</button></div>
 <div class="row"><label class="grow">Формат<select id="aspect"><option value="9:16">9:16 · Shorts / Reels / TikTok</option><option value="1:1">1:1 · Квадрат</option><option value="16:9">16:9 · YouTube</option></select></label><button id="add" class="secondary" disabled>+ Добавить</button></div>
+<div class="divider"></div>
+<div class="subhead"><h3>Редакторские версии</h3><span class="tag">ДЛЯ КОМАНДЫ</span></div>
+<label>Имя монтажёра / метка проекта<input id="editorName" maxlength="20" placeholder="Например: editor_01"></label>
+<label class="checkline"><input id="makeVariants" type="checkbox" checked> Автоматически создать 2 версии каждого фрагмента</label>
+<p class="hint">Версия A — кадр целиком с полями при необходимости. Версия B — заполнение кадра с обрезкой краёв. Это разные варианты оформления, а не обход авторских прав или систем платформ.</p>
 <div id="clips" class="clips"><div class="empty">Добавь фрагмент или выбери один из предложенных выше.</div></div>
 <button id="export" class="primary wide" disabled>СОБРАТЬ ГОТОВЫЕ РОЛИКИ</button><div id="message" class="message" role="status"></div>
 </section>
