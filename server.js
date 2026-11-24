@@ -230,7 +230,7 @@ app.post("/api/clips",async(req,res)=>{
     if(!Array.isArray(clips)||!clips.length||clips.length>30) throw new Error("Добавьте от 1 до 30 фрагментов");
     if(!["9:16","1:1","16:9"].includes(aspect)) throw new Error("Неизвестный формат кадра");
     if(!["fit","fill"].includes(cropMode)) throw new Error("Неизвестный режим кадрирования");
-    const safeEditor=String(editorName||"").replace(/[^\\p{L}\\p{N}_-]/gu,"").slice(0,20);
+    const safeEditor=String(editorName||"").replace(/[^\p{L}\p{N}_-]/gu,"").slice(0,20);
     const duration=job.duration||await mediaDuration(input);
     job.duration=duration;
     const results=[];
