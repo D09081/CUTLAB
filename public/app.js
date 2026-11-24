@@ -2,6 +2,17 @@ const $=id=>document.getElementById(id);
 let project=null, clips=[];
 const file=$("file"), preview=$("preview");
 $("choose").onclick=()=>file.click();
+$("importUrl").onclick=async()=>{
+ const url=$("sourceUrl").value.trim();if(!url)return;
+ $("importUrl").disabled=true;$("message").textContent="Импортирую видео по ссылке…";
+ try{const r=await fetch("/api/import-url",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});const j=await r.json();if(!r.ok)throw Error(j.error);
+ project=j;clips=[];render();$("projectTag").textContent="ИМПОРТ ГОТОВ";$("fileInfo").textContent="Источник: "+j.source+" · "+(j.size/1024/1024).toFixed(1)+" МБ";
+ preview.removeAttribute("src");preview.style.display="none";$("add").disabled=false;$("export").disabled=false;$("setStart").disabled=false;$("setEnd").disabled=false;$("setStart").disabled=true;$("setEnd").disabled=true;
+ $("message").textContent="Импорт завершён. Добавляй фрагменты по времени.";await loadHistory();
+ }catch(e){$("message").textContent="Не удалось импортировать: "+e.message}finally{$("importUrl").disabled=false}
+};
+$("setStart").onclick=()=>{$("start").value=preview.currentTime.toFixed(1)};
+$("setEnd").onclick=()=>{$("end").value=preview.currentTime.toFixed(1)};
 file.onchange=async()=>{
  const f=file.files[0]; if(!f)return;
  $("message").textContent="Загружаю видео…";
@@ -43,7 +54,7 @@ async function loadHistory(){
    const el=document.createElement("article");el.className="history-item";
    const date=new Date(item.createdAt).toLocaleString("ru-RU");
    const links=(item.exports||[]).map(x=>`<a href="${x.url}" download>${x.name}</a>`).join(" · ");
-   el.innerHTML=`<div><b>${escapeHtml(item.name)}</b><small>${date} · ${item.status}${item.aspect?" · "+item.aspect:""}</small>${links?`<div class="history-links">${links}</div>`:""}</div><span class="history-type">${item.type==="export"?"ЭКСПОРТ":"ИСХОДНИК"}</span>`;
+   el.innerHTML=`<div><b>${escapeHtml(item.name)}</b><small>${date} · ${item.status}${item.aspect?" · "+item.aspect:""}</small>${links?`<div class="history-links">${links}</div>`:""}</div><span class="history-type">${item.type==="export"?"ЭКСПОРТ":item.type==="import"?"ИМПОРТ":"ИСХОДНИК"}</span>`;
    box.append(el);
   });
  }catch(e){box.innerHTML='<div class="empty">Не удалось загрузить историю</div>'}
