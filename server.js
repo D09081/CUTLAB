@@ -244,6 +244,25 @@ function subtitleForceStyle(preset, size) {
   const style = styles[preset] || styles.clean;
   return "FontName=DejaVu Sans,FontSize=" + fontSize + ",Bold=" + style.bold + ",PrimaryColour=" + style.primary + ",OutlineColour=" + style.outline + ",BorderStyle=1,Outline=" + style.border + ",Shadow=1,Alignment=2,MarginV=110";
 }
+function assTimestamp(seconds) {
+  const cs=Math.max(0,Math.round(seconds*100));
+  const h=Math.floor(cs/360000),m=Math.floor(cs%360000/6000),sec=Math.floor(cs%6000/100);
+  return h+":"+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0")+"."+String(cs%100).padStart(2,"0");
+}
+function makeKaraokeAss(words, offset, limit, preset, size) {
+  const list=(words||[]).filter(w=>Number(w.end)>offset&&Number(w.start)<limit&&w.word).map(w=>({start:Math.max(0,Number(w.start)-offset),end:Math.max(0,Math.min(Number(w.end),limit)-offset),word:String(w.word).trim()})).filter(w=>w.end>w.start);
+  if(!list.length) return "";
+  const primary=preset==="streamer"?"&H0000D9FF":preset==="neon"?"&H00F0D080":"&H00FFFFFF",secondary="&H0000D9FF";
+  const font=[44,52,60].includes(Number(size))?Number(size):52;
+  const out=["[Script Info]","ScriptType: v4.00+","PlayResX: 1080","PlayResY: 1920","ScaledBorderAndShadow: yes","","[V4+ Styles]","Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding","Style: Default,DejaVu Sans,"+font+","+primary+","+secondary+",&HCC000000,&H80000000,1,0,1,3,1,2,60,60,120,1","","[Events]","Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text"];
+  for(let i=0;i<list.length;){
+    const group=[list[i++]];
+    while(i<list.length&&group.length<6&&list[i].start-group[group.length-1].end<0.55) group.push(list[i++]);
+    const text=group.map(w=>"{\\k"+Math.max(1,Math.round((w.end-w.start)*100))+"}"+w.word.replace(/[{}]/g,"").replace(/\\/g,"")).join(" ");
+    out.push("Dialogue: 0,"+assTimestamp(group[0].start)+","+assTimestamp(group[group.length-1].end)+",Default,,0,0,0,,"+text);
+  }
+  return out.join("\n");
+}
 app.post("/api/clips",async(req,res)=>{
   try {
     const {id,clips,aspect="9:16",burnSubtitles=false,subtitlePreset="clean",subtitleSize=52,cropMode="fit",editorName="",makeVariants=false}=req.body||{}, {job,input}=getJob(id);
@@ -272,7 +291,18 @@ app.post("/api/clips",async(req,res)=>{
           const srt=makeSrt(job.captions.segments,start,end),srtName=outName+".srt";
           fs.writeFileSync(path.join(CAPTIONS,srtName),srt);
           const srtPath=path.join(CAPTIONS,srtName).replace(/\\\\/g,"/").replace(/:/g,"\\\\:");
-          try { const forceStyle=subtitleForceStyle(variant.preset,subtitleSize); await runFFmpeg([...base,"-vf",vf+`,subtitles='${srtPath}':force_style='${forceStyle}'`,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); burned=true; }
+          try {
+            if(job.captions.words?.length){
+              const assPath=path.join(CAPTIONS,outName+".ass");
+              fs.writeFileSync(assPath,makeKaraokeAss(job.captions.words,start,end,variant.preset,subtitleSize));
+              const safeAss=assPath.replace(/\\/g,"/").replace(/:/g,"\\:");
+              await runFFmpeg([...base,"-vf",vf+",ass='"+safeAss+"'","-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
+            } else {
+              const forceStyle=subtitleForceStyle(variant.preset,subtitleSize);
+              await runFFmpeg([...base,"-vf",vf+",subtitles='"+srtPath+"':force_style='"+forceStyle+"'","-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
+            }
+            burned=true;
+          }
           catch { await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]); }
         } else await runFFmpeg([...base,"-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","23","-c:a","aac","-b:a","128k","-movflags","+faststart",out]);
         const subtitleUrl=job.captions?"/captions/"+outName+".srt":null;
