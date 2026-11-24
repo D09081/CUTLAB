@@ -9,7 +9,7 @@ function setReady(){
  $("projectTag").textContent="ПРОЕКТ ГОТОВ";
 }
 function setProject(j){
- project=j;clips=[];suggestions=[];render();setReady();
+ project=j;try{localStorage.setItem("cutlab:lastProject",j.id)}catch{}clips=[];suggestions=[];render();setReady();
  preview.src="/api/source/"+j.id;preview.style.display="block";preview.load();
  $("start").value=0;$("end").value=30;
  $("fileInfo").textContent=(j.name||"Видео")+(j.size?" · "+(j.size/1024/1024).toFixed(1)+" МБ":"");
@@ -105,4 +105,16 @@ async function loadHistory(){
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 $("refreshHistory").onclick=loadHistory;
-loadHistory();
+async function restoreProject(){
+ const id=localStorage.getItem("cutlab:lastProject");if(!id)return;
+ try{
+  const r=await fetch("/api/jobs/"+encodeURIComponent(id)),j=await r.json();if(!r.ok)throw Error(j.error||"Проект недоступен");
+  const x=j.job;setProject({id:x.id,name:x.name,size:x.size,hash:x.hash});
+  if(x.captions){hasCaptions=true;$("captionStatus").textContent=x.captions.count+" ФРАЗ"}
+  say("Последний проект восстановлен. Можно продолжать монтаж.");
+ }catch(e){
+  localStorage.removeItem("cutlab:lastProject");
+  say("Предыдущий проект недоступен на сервере. Загрузи исходник заново.");
+ }
+}
+loadHistory();restoreProject();
