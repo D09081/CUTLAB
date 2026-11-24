@@ -4,29 +4,38 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#090b12"><meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/style.css">
-<title>CUTLAB — Video Studio</title>
+<title>CUTLAB — AI Video Studio</title>
 </head>
 <body>
-<header><div class="brand"><span class="mark">C</span><div><b>CUTLAB</b><small>VIDEO STUDIO</small></div></div><span class="status"><i></i> LOCAL WORKSPACE</span></header>
+<header><div class="brand"><span class="mark">C</span><div><b>CUTLAB</b><small>AI VIDEO STUDIO</small></div></div><span class="status"><i></i> CREATOR WORKSPACE</span></header>
 <main>
-<section class="hero"><div class="eyebrow">CREATOR WORKFLOW / 01</div><h1>Твой контент.<br><em>Твои лучшие моменты.</em></h1><p>Загрузи запись, отметь сильные фрагменты и собери вертикальные ролики.</p></section>
+<section class="hero"><div class="eyebrow">YOUR VIDEO · YOUR STORY</div><h1>Из длинного видео<br><em>в готовый контент.</em></h1><p>Загрузи запись. CUTLAB найдёт смены сцен, предложит фрагменты, распознает речь и подготовит ролики под вертикальные платформы.</p></section>
 <section class="panel upload" id="drop">
-<div class="upload-icon">↑</div><h2>Добавить исходное видео</h2><p>MP4, MOV и другие видеоформаты</p>
+<div class="step">01 <span>ИМПОРТ</span></div><div class="upload-icon">↑</div><h2>Добавить исходное видео</h2><p>Выбери файл на iPhone или вставь ссылку на публичный ролик</p>
 <input id="file" type="file" accept="video/*" hidden>
-<div class="url-import"><div class="eyebrow">IMPORT FROM LINK</div><label for="sourceUrl">Или вставь ссылку на ролик</label><div class="url-row"><input id="sourceUrl" type="url" placeholder="https://youtu.be/..."><button id="importUrl" class="secondary">Импортировать</button></div><small>Публичные ссылки: YouTube, TikTok, Twitch, Vimeo, Instagram, Facebook, X. Только контент, который ты вправе использовать.</small></div>
-<button class="primary" id="choose">Выбрать видео</button><div id="fileInfo" class="muted">Файл обрабатывается на сервере проекта</div>
+<div class="url-import"><label for="sourceUrl">Ссылка на видео</label><div class="url-row"><input id="sourceUrl" type="url" placeholder="YouTube, TikTok, Twitch…"><button id="importUrl" class="secondary">Импорт</button></div><small>Только видео, которые ты вправе использовать. Доступность импорта зависит от платформы.</small></div>
+<button class="primary" id="choose">Выбрать видео на устройстве</button><div id="fileInfo" class="muted">Поддерживаются MP4, MOV и другие видеоформаты</div>
 </section>
-<section class="workspace panel">
-<div class="section-head"><div><div class="eyebrow">EDITING DESK / 02</div><h2>Нарезка фрагментов</h2></div><span class="tag" id="projectTag">НЕТ ПРОЕКТА</span></div>
+<section class="panel workspace">
+<div class="section-head"><div><div class="step">02 <span>АНАЛИЗ И МОНТАЖ</span></div><h2>Твоя монтажная</h2></div><span class="tag" id="projectTag">НЕТ ПРОЕКТА</span></div>
 <video id="preview" controls playsinline></video>
+<div class="action-grid"><button id="analyze" class="secondary" disabled><b>✦ Найти лучшие моменты</b><small>Анализ смен сцен</small></button><button id="transcribe" class="secondary" disabled><b>字幕 Субтитры AI</b><small>Распознать речь в видео</small></button></div>
+<div id="suggestions" class="suggestions"><div class="empty">После загрузки видео нажми «Найти лучшие моменты» — CUTLAB предложит фрагменты.</div></div>
+<div class="divider"></div>
+<div class="subhead"><h3>Субтитры</h3><span class="tag" id="captionStatus">НЕ ДОБАВЛЕНЫ</span></div>
+<p class="hint">Автораспознавание работает после подключения ключа распознавания на сервере. Также можно загрузить готовый .SRT.</p>
+<div class="row"><input id="srtFile" type="file" accept=".srt,.txt"><button id="uploadSrt" class="secondary" disabled>Загрузить SRT</button></div>
+<label class="checkline"><input id="burnSubtitles" type="checkbox" checked> Вшить субтитры в видео (если поддерживается сервером)</label>
+<div class="divider"></div>
+<div class="subhead"><h3>Ручная нарезка</h3><span class="tag">ДО 30 ФРАГМЕНТОВ</span></div>
 <div class="controls"><label>Начало, сек<input id="start" type="number" min="0" step="0.1" value="0"></label><label>Конец, сек<input id="end" type="number" min="0" step="0.1" value="30"></label></div>
-<div class="row seek-row"><button id="setStart" class="secondary" disabled>Начало = позиция плеера</button><button id="setEnd" class="secondary" disabled>Конец = позиция плеера</button></div>
-<div class="row"><label class="grow">Формат экспорта<select id="aspect"><option value="9:16">9:16 · Shorts / Reels</option><option value="1:1">1:1 · квадрат</option><option value="16:9">16:9 · горизонтальный</option></select></label><button id="add" class="secondary" disabled>+ Добавить фрагмент</button></div>
-<div id="clips" class="clips"><div class="empty">Пока нет фрагментов. Добавь первый отрезок.</div></div>
-<button id="export" class="primary wide" disabled>СОБРАТЬ MP4</button><div id="message" class="message" role="status"></div>
+<div class="row seek-row"><button id="setStart" class="secondary" disabled>Начало = позиция</button><button id="setEnd" class="secondary" disabled>Конец = позиция</button></div>
+<div class="row"><label class="grow">Формат<select id="aspect"><option value="9:16">9:16 · Shorts / Reels / TikTok</option><option value="1:1">1:1 · Квадрат</option><option value="16:9">16:9 · YouTube</option></select></label><button id="add" class="secondary" disabled>+ Добавить</button></div>
+<div id="clips" class="clips"><div class="empty">Добавь фрагмент или выбери один из предложенных выше.</div></div>
+<button id="export" class="primary wide" disabled>СОБРАТЬ ГОТОВЫЕ РОЛИКИ</button><div id="message" class="message" role="status"></div>
 </section>
-<section class="panel history-panel"><div class="section-head"><div><div class="eyebrow">LIBRARY / 04</div><h2>История проектов</h2></div><button id="refreshHistory" class="secondary">Обновить</button></div><div id="history" class="history-list"><div class="empty">Загружаю историю…</div></div></section>
-<section class="features"><div><b>01 / CUT</b><h3>Точная нарезка</h3><p>Задавай начало и конец каждого момента.</p></div><div><b>02 / FORMAT</b><h3>Вертикальный экспорт</h3><p>Подготовка видео под мобильные платформы.</p></div><div><b>03 / HISTORY</b><h3>Контроль повторов</h3><p>Хэш исходника помогает учитывать повторно загруженные файлы в рамках проекта.</p></div></section>
-<footer>CUTLAB · BUILD 1.1 · Сделано для авторов</footer>
+<section class="panel history-panel"><div class="section-head"><div><div class="step">03 <span>БИБЛИОТЕКА</span></div><h2>История проектов</h2></div><button id="refreshHistory" class="secondary">Обновить</button></div><div id="history" class="history-list"><div class="empty">Загружаю историю…</div></div></section>
+<section class="features"><div><b>✦ SMART CUT</b><h3>Умные фрагменты</h3><p>Поиск смен сцен и быстрые предложения для монтажа.</p></div><div><b>CC / SUBTITLES</b><h3>Субтитры</h3><p>Автораспознавание речи через подключённый сервис или импорт SRT.</p></div><div><b>9:16 / 1:1 / 16:9</b><h3>Форматы</h3><p>Экспорт под вертикальные и горизонтальные площадки.</p></div></section>
+<footer>CUTLAB · BUILD 2.0 · CREATE MORE</footer>
 </main><script src="/app.js"></script>
 </body></html>
