@@ -219,8 +219,13 @@ app.post("/api/transcribe/:id", async (req,res) => {
     const audio=fs.readFileSync(audioPath);
     if(audio.length>24*1024*1024) throw new Error("Аудиодорожка больше 24 МБ. Для длинного видео сначала нарежьте исходник на части.");
     const form=new FormData();form.append("file",new Blob([audio],{type:"audio/mpeg"}), "audio.mp3");form.append("model",provider.model);form.append("response_format","verbose_json");form.append("timestamp_granularities[]","segment");form.append("timestamp_granularities[]","word");
-    const response=await fetch(provider.endpoint,{method:"POST",headers:{Authorization:"Bearer "+provider.key},body:form});
-    const data=await response.json();if(!response.ok) throw new Error(data.error?.message||"Сервис распознавания не ответил");
+    let response=await fetch(provider.endpoint,{method:"POST",headers:{Authorization:"Bearer "+provider.key},body:form});
+    let data=await response.json();
+    if(!response.ok&&/timestamp_granularities|unsupported|unknown parameter/i.test(data.error?.message||"")){
+      const fallback=new FormData();fallback.append("file",new Blob([audio],{type:"audio/mpeg"}),"audio.mp3");fallback.append("model",provider.model);fallback.append("response_format","verbose_json");
+      response=await fetch(provider.endpoint,{method:"POST",headers:{Authorization:"Bearer "+provider.key},body:fallback});data=await response.json();
+    }
+    if(!response.ok) throw new Error(data.error?.message||"Сервис распознавания не ответил");
     const segments=(data.segments||[]).map(s=>({start:s.start,end:s.end,text:s.text}));const words=(data.words||[]).map(w=>({start:w.start,end:w.end,word:w.word})).filter(w=>Number.isFinite(w.start)&&Number.isFinite(w.end)&&w.end>w.start);
     if(!segments.length&&data.text) segments.push({start:0,end:Math.max(2,job.duration||10),text:data.text});
     if(!segments.length) throw new Error("Речь не распознана");
