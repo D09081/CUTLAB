@@ -25,7 +25,12 @@
 <div class="subhead"><h3>Субтитры</h3><span class="tag" id="captionStatus">НЕ ДОБАВЛЕНЫ</span></div>
 <p class="hint">Автораспознавание подключается через Groq (есть бесплатный лимит) или OpenAI API. Также можно загрузить готовый .SRT.</p>
 <div class="row"><input id="srtFile" type="file" accept=".srt,.txt"><button id="uploadSrt" class="secondary" disabled>Загрузить SRT</button></div>
-<label class="checkline"><input id="burnSubtitles" type="checkbox" checked> Вшить субтитры в видео (если поддерживается сервером)</label>
+<label class="checkline"><input id="burnSubtitles" type="checkbox" checked> Вшить субтитры в видео</label>
+<div class="subtitle-controls">
+<label>Стиль субтитров<select id="subtitlePreset"><option value="clean">Чистый белый</option><option value="streamer">Стримерский — жёлтый жирный</option><option value="neon">Неоновый — голубой</option></select></label>
+<label>Размер текста<select id="subtitleSize"><option value="44">Компактный</option><option value="52" selected>Обычный</option><option value="60">Крупный</option></select></label>
+</div>
+<p class="hint">Стиль применяется при вшивании субтитров. Это фразовые субтитры из SRT, не пословная karaoke-анимация.</p>
 <div class="divider"></div>
 <div class="subhead"><h3>Ручная нарезка</h3><span class="tag">ДО 30 ФРАГМЕНТОВ</span></div>
 <div class="controls"><label>Начало, сек<input id="start" type="number" min="0" step="0.1" value="0"></label><label>Конец, сек<input id="end" type="number" min="0" step="0.1" value="30"></label></div>
